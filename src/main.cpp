@@ -1,6 +1,5 @@
 #define GLFW_INCLUDE_NONE
 
-#include <Windows.h>
 #include <glad/glad.h>
 #include <GLFW/glfw3.h>
 
@@ -9,7 +8,11 @@
 
 using namespace std;
 
+#define HEIGHT 1080
+#define WIDTH 1920
+
 void error_callback(int error, const char* description);
+void processInput(GLFWwindow* window);
 
 int main() {
     // Set the error callback
@@ -22,17 +25,13 @@ int main() {
     glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
 
     // Create a window
-    GLFWwindow* window = glfwCreateWindow(1920, 1080, "OpenGLProject", NULL, NULL);
+    GLFWwindow* window = glfwCreateWindow(WIDTH, HEIGHT, "OpenGLProject", NULL, NULL);
     assert(window != nullptr);
-
-    // Make context current
     glfwMakeContextCurrent(window);
 
     // Fetch OpenGL function pointers with glad
-    if (!gladLoadGLLoader((GLADloadproc)glfwGetProcAddress)) {
-        cerr << "Failed to initialize GLAD\n";
-        return -1;
-    }
+    assert(gladLoadGLLoader((GLADloadproc)glfwGetProcAddress));
+
 
     // OpenGL info calls
     cout << "Vendor:   " << reinterpret_cast<const char*>(glGetString(GL_VENDOR)) << "\n";
@@ -41,17 +40,36 @@ int main() {
 
     glfwSwapInterval(1); // Enable vsync
 
+    //  Set up triangle
+    float vertices[] = {
+    -0.5f, -0.5f, 0.0f,
+     0.5f, -0.5f, 0.0f,
+     0.0f,  0.5f, 0.5f
+    };
+
+    //  Generate buffer ID
+    unsigned int VBO;
+    glGenBuffers(1, &VBO);
+    //  Bind this to G
+    glBindBuffer(GL_ARRAY_BUFFER, VBO);
+    //  Copy vertices to buffer
+    glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
+
     // Main loop
     while (!glfwWindowShouldClose(window)) {
+        //  Inputs
+        processInput(window);
+
+        //  Rendering Commands
         int width, height;
         glfwGetFramebufferSize(window, &width, &height);
-        glViewport(0, 0, width, height);
+        glViewport(0,0,WIDTH, HEIGHT);
+
         glClearColor(0.1f, 0.2f, 0.3f, 1.0f); //    Bluish gray color
         glClear(GL_COLOR_BUFFER_BIT);
 
+        //  Check events and swap buffers
         glfwPollEvents();
-        Sleep(10);
-
         glfwSwapBuffers(window);
     }
 
@@ -63,4 +81,10 @@ int main() {
 // Error callback
 void error_callback(int error, const char* description) {
     cerr << "GLFW Error [" << error << "]: " << description << "\n";
+}
+
+
+void processInput(GLFWwindow* window) {
+    if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS)
+        glfwSetWindowShouldClose(window, true);
 }
