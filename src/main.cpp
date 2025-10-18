@@ -8,69 +8,62 @@
 
 using namespace std;
 
-#define HEIGHT 1080
-#define WIDTH 1920
+constexpr unsigned int WIDTH = 1920;
+constexpr unsigned int HEIGHT = 1080;
 
 // Shaders
-const char* vertexShaderSource = "#version 330 core\n"
+static const char* vertexShaderSource = "#version 330 core\n"
 "layout (location = 0) in vec3 aPos;\n"
 "void main()\n"
 "{\n"
 "   gl_Position = vec4(aPos.x, aPos.y, aPos.z, 1.0);\n"
 "}\0";
 
-const char* fragmentShaderSource = "#version 330 core\n"
+static const char* fragmentShaderSource = "#version 330 core\n"
 "out vec4 FragColor;\n"
 "void main()\n"
 "{\n"
 "FragColor = vec4(1.0f, 0.5f, 0.2f, 1.0f);\n"
 "}\0";
 
-void error_callback(int error, const char* description);
-void processInput(GLFWwindow* window);
+static void error_callback(int error, const char* description);
+static void processInput(GLFWwindow* window);
 
 int main() {
-    // Set the error callback
     glfwSetErrorCallback(error_callback);
 
-    // Initialize GLFW
     assert(glfwInit());
     glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
     glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
     glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
 
-    // Create a window
     GLFWwindow* window = glfwCreateWindow(WIDTH, HEIGHT, "OpenGLProject", NULL, NULL);
     assert(window != nullptr);
     glfwMakeContextCurrent(window);
-
     // Fetch OpenGL function pointers with glad
     assert(gladLoadGLLoader((GLADloadproc)glfwGetProcAddress));
 
 
-    // OpenGL info calls
     cout << "Vendor:   " << reinterpret_cast<const char*>(glGetString(GL_VENDOR)) << "\n";
     cout << "Renderer: " << glGetString(GL_RENDERER) << "\n";
     cout << "Version:  " << glGetString(GL_VERSION) << "\n";
-
     glfwSwapInterval(1); // Enable vsync
+
 
     //  Set up triangle
     float vertices[] = {
-    -0.5f, -0.5f, 0.0f,
-     0.5f, -0.5f, 0.0f,
-     0.0f,  0.5f, 0.5f
+     0.5f,  0.5f, 0.0f,  // top right
+     0.5f, -0.5f, 0.0f,  // bottom right
+    -0.5f, -0.5f, 0.0f,  // bottom left
+    -0.5f,  0.5f, 0.0f   // top left 
+    };
+    GLuint indices[] = { 
+        0, 1, 3,   // first triangle
+        1, 2, 3    // second triangle
     };
 
-    //  Generate buffer ID
-    GLuint VBO;
-    glGenBuffers(1, &VBO);
-    //  Bind this to G
-    glBindBuffer(GL_ARRAY_BUFFER, VBO);
-    //  Copy vertices to buffer
-    glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
 
-
+    //  Shader init lambda
     int success;
     auto shaderInit = [&success](const char* source, GLuint& name, GLenum type){
         name = glCreateShader(type);
@@ -87,13 +80,12 @@ int main() {
             std::cerr << "Shader compile failed (" << name << "):\n" << log << "\n";
             std::abort();
         }
-        };
+    };
 
-    //  Compile vertex shader
+
+    //  Compile shaders
     GLuint vertexShader;
     shaderInit(vertexShaderSource, vertexShader, GL_VERTEX_SHADER);
-
-    //  Compile fragment shader
     GLuint fragmentShader;
     shaderInit(fragmentShaderSource, fragmentShader, GL_FRAGMENT_SHADER);
 
@@ -119,38 +111,43 @@ int main() {
     glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)0);
     glEnableVertexAttribArray(0);
 
-    GLuint VAO;
-    glGenVertexArrays(1, &VAO);
 
-    // 1. bind Vertex Array Object
+    GLuint VAO, VBO, EBO;
+    glGenVertexArrays(1, &VAO);
+    glGenBuffers(1, &VBO);
+    glGenBuffers(1, &EBO);
+
+    //  Bind VAO first
     glBindVertexArray(VAO);
-    // 2. copy our vertices array in a buffer for OpenGL to use
+    // VBO
     glBindBuffer(GL_ARRAY_BUFFER, VBO);
     glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
-    // 3. then set our vertex attributes pointers
+    // EBO (bind while VAO is bound so the association is stored in VAO)
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
+    glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(indices), indices, GL_STATIC_DRAW);
+    // Vertex attributes (also while VAO is bound)
     glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)0);
     glEnableVertexAttribArray(0);
+    // Unbind VAO
+    glBindVertexArray(0);
 
 
     // Main loop
     while (!glfwWindowShouldClose(window)) {
-        //  Inputs
         processInput(window);
 
-        //  Rendering Commands
         int width, height;
         glfwGetFramebufferSize(window, &width, &height);
         glViewport(0,0,width, height);
 
-        glClearColor(0.1f, 0.2f, 0.3f, 1.0f); //    Bluish gray color
+        glClearColor(0.1f, 0.2f, 0.3f, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT);
 
-        //  Draw object
         glUseProgram(shaderProgram);
         glBindVertexArray(VAO);
-        glDrawArrays(GL_TRIANGLES, 0, 3);
+        glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, nullptr);
+        glBindVertexArray(0);
 
-        //  Check events and swap buffers
         glfwPollEvents();
         glfwSwapBuffers(window);
     }
