@@ -63,36 +63,42 @@ int main() {
     };
 
     //  Generate buffer ID
-    unsigned int VBO;
+    GLuint VBO;
     glGenBuffers(1, &VBO);
     //  Bind this to G
     glBindBuffer(GL_ARRAY_BUFFER, VBO);
     //  Copy vertices to buffer
     glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
 
-    //  Compile vertex shader
-    unsigned int vertexShader;
-    vertexShader = glCreateShader(GL_VERTEX_SHADER);
-    glShaderSource(vertexShader, 1, &vertexShaderSource, NULL);
-    glCompileShader(vertexShader);
 
-    //  Check for successful compilation
     int success;
-    char infoLog[512];
-    glGetShaderiv(vertexShader, GL_COMPILE_STATUS, &success);
-    assert(success);
+    auto shaderInit = [&success](const char* source, GLuint& name, GLenum type){
+        name = glCreateShader(type);
+        glShaderSource(name, 1, &source, NULL);
+        glCompileShader(name);
+
+        //  Check for success
+        glGetShaderiv(name, GL_COMPILE_STATUS, &success);
+
+        if (!success) {
+            GLint len = 0; glGetShaderiv(name, GL_INFO_LOG_LENGTH, &len);
+            std::string log(len, '\0');
+            glGetShaderInfoLog(name, len, nullptr, log.data());
+            std::cerr << "Shader compile failed (" << name << "):\n" << log << "\n";
+            std::abort();
+        }
+        };
+
+    //  Compile vertex shader
+    GLuint vertexShader;
+    shaderInit(vertexShaderSource, vertexShader, GL_VERTEX_SHADER);
 
     //  Compile fragment shader
-    unsigned int fragmentShader;
-    fragmentShader = glCreateShader(GL_FRAGMENT_SHADER);
-    glShaderSource(fragmentShader, 1, &fragmentShaderSource, NULL);
-    glCompileShader(fragmentShader);
-
-    glGetShaderiv(fragmentShader, GL_COMPILE_STATUS, &success);
-    assert(success);
+    GLuint fragmentShader;
+    shaderInit(fragmentShaderSource, fragmentShader, GL_FRAGMENT_SHADER);
 
     //  Create shader program
-    unsigned int shaderProgram;
+    GLuint shaderProgram;
     shaderProgram = glCreateProgram();
     glAttachShader(shaderProgram, vertexShader);
     glAttachShader(shaderProgram, fragmentShader);
@@ -113,7 +119,7 @@ int main() {
     glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)0);
     glEnableVertexAttribArray(0);
 
-    unsigned int VAO;
+    GLuint VAO;
     glGenVertexArrays(1, &VAO);
 
     // 1. bind Vertex Array Object
@@ -134,7 +140,7 @@ int main() {
         //  Rendering Commands
         int width, height;
         glfwGetFramebufferSize(window, &width, &height);
-        glViewport(0,0,WIDTH, HEIGHT);
+        glViewport(0,0,width, height);
 
         glClearColor(0.1f, 0.2f, 0.3f, 1.0f); //    Bluish gray color
         glClear(GL_COLOR_BUFFER_BIT);
